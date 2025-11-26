@@ -1,0 +1,26 @@
+{
+  "name": "burger-kiosk-spa",
+  "version": "1.0.0",
+  "description": "Interactive burger ordering kiosk single-page application",
+  "main": "src/index.html",
+  "scripts": {
+    "start": "echo 'Static site - open src/index.html in browser'",
+    "build": "echo 'No build process required for static site'"
+  },
+  "keywords": [
+    "spa", 
+    "vanilla-js", 
+    "bootstrap", 
+    "handlebars", 
+    "kiosk",
+    "burger",
+    "mvc"
+  ],
+  "author": "Jordan Grant",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

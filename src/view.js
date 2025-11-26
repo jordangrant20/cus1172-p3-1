@@ -71,14 +71,10 @@ BurgerView.prototype.setupTemplates = function() {
                 '{{#each burgers}}' +
                 '<div class="col-md-5 mb-4">' +
                     '<div class="card h-100 burger-card">' +
+                        '<div class="burger-image-container">' +
+                            '<img src="{{image}}" class="card-img-top burger-image" alt="{{title}}">' +
+                        '</div>' +
                         '<div class="card-body d-flex flex-column">' +
-                            '<div class="burger-icon mb-3">' +
-                                '{{#if (eq id "classic-beef")}}' +
-                                    '🥩' +
-                                '{{else}}' +
-                                    '🐔' +
-                                '{{/if}}' +
-                            '</div>' +
                             '<h4 class="card-title">{{title}}</h4>' +
                             '<p class="card-text flex-grow-1">{{description}}</p>' +
                             '<button class="btn btn-outline-primary btn-lg pick-burger-btn" data-burger-id="{{id}}" data-burger-name="{{title}}">' +
@@ -170,30 +166,47 @@ BurgerView.prototype.setupTemplates = function() {
     // Order info box
     this.templates.orderInfo = Handlebars.compile(
         '<div class="order-summary">' +
-            '<h4 class="mb-3">📋 Your Order</h4>' +
+            '<h4 class="mb-3">📋 Your Orders {{#if orderCount}}({{orderCount}}){{/if}}</h4>' +
             '{{#if name}}' +
             '<div class="mb-3">' +
-                '<strong>Name:</strong> {{name}}' +
+                '<strong>Customer:</strong> {{name}}' +
             '</div>' +
             '{{/if}}' +
+            
+            '{{#if completedOrders}}' +
+            '<div class="completed-orders mb-3">' +
+                '<h6 class="text-success">✅ Completed Orders:</h6>' +
+                '{{#each completedOrders}}' +
+                '<div class="order-item mb-2 p-2 bg-light rounded">' +
+                    '<small class="text-muted">Order #{{id}} - {{completedAt}}</small>' +
+                    '<div><strong>{{burgerName}}</strong></div>' +
+                    '<small class="text-muted">{{choices.step1}}, {{choices.step4}}</small>' +
+                '</div>' +
+                '{{/each}}' +
+            '</div>' +
+            '{{/if}}' +
+            
             '{{#if burgerName}}' +
-            '<div class="mb-3">' +
-                '<strong>Burger:</strong> {{burgerName}}' +
+            '<div class="current-order mb-3">' +
+                '<h6 class="text-primary">🔄 Current Order:</h6>' +
+                '<div class="mb-2">' +
+                    '<strong>{{burgerName}}</strong>' +
+                '</div>' +
+                '{{#if choices}}' +
+                '<div class="selections">' +
+                    '<small class="text-muted">Progress:</small>' +
+                    '<ul class="list-unstyled mt-1">' +
+                        '{{#each choices}}' +
+                        '<li class="mb-1">' +
+                            '<small class="text-muted">{{@key}}:</small> {{this}}' +
+                        '</li>' +
+                        '{{/each}}' +
+                    '</ul>' +
+                '</div>' +
+                '{{/if}}' +
             '</div>' +
             '{{/if}}' +
-            '{{#if choices}}' +
-            '<div class="selections">' +
-                '<strong>Your Choices:</strong>' +
-                '<ul class="list-unstyled mt-2">' +
-                    '{{#each choices}}' +
-                    '<li class="mb-1">' +
-                        '<small class="text-muted">{{@key}}:</small><br>' +
-                        '{{this}}' +
-                    '</li>' +
-                    '{{/each}}' +
-                '</ul>' +
-            '</div>' +
-            '{{/if}}' +
+            
             '{{#unless name}}' +
             '<p class="text-muted">Enter your name to start...</p>' +
             '{{/unless}}' +
@@ -211,7 +224,17 @@ BurgerView.prototype.setupTemplates = function() {
                 '{{/if}}' +
             '</div>' +
             '<h2 class="mb-4">{{message}}</h2>' +
+            '{{#unless done}}' +
+                '<div class="mb-4">' +
+                    '<p class="text-white-50">Don\'t worry! You can still place your order with the choices you\'ve made.</p>' +
+                '</div>' +
+            '{{/unless}}' +
             '<div class="final-actions">' +
+                '{{#unless done}}' +
+                    '<button class="btn btn-warning btn-lg me-3" id="order-anyway-btn">' +
+                        '🍔 Order Anyway' +
+                    '</button>' +
+                '{{/unless}}' +
                 '<button class="btn btn-success btn-lg me-3" id="new-order-btn">' +
                     'Order Again' +
                 '</button>' +
@@ -284,7 +307,7 @@ BurgerView.prototype.makeFeedback = function(message) {
 };
 
 // Make order info box
-BurgerView.prototype.makeOrderInfo = function(order) {
+BurgerView.prototype.makeOrderInfo = function(order, completedOrders, orderCount) {
     // Make choices look nicer
     var niceChoices = {};
     if (order.choices) {
@@ -297,7 +320,9 @@ BurgerView.prototype.makeOrderInfo = function(order) {
     return this.templates.orderInfo({
         name: order.name,
         burgerName: order.burgerName,
-        choices: niceChoices
+        choices: niceChoices,
+        completedOrders: completedOrders,
+        orderCount: orderCount
     });
 };
 
@@ -354,17 +379,17 @@ BurgerView.prototype.changeContent = function(html) {
 };
 
 // Update order box
-BurgerView.prototype.updateOrderBox = function(order) {
+BurgerView.prototype.updateOrderBox = function(order, completedOrders, orderCount) {
     var orderBox = document.getElementById('order-box');
     if (orderBox) {
-        orderBox.innerHTML = this.makeOrderInfo(order);
+        orderBox.innerHTML = this.makeOrderInfo(order, completedOrders, orderCount);
     }
 };
 
 // Start the app
 BurgerView.prototype.startApp = function() {
     var appDiv = document.getElementById('app');
-    var orderInfo = this.makeOrderInfo({});
+    var orderInfo = this.makeOrderInfo({}, [], 0);
     var content = this.makeWelcome();
     
     appDiv.innerHTML = this.makeApp(content, orderInfo);

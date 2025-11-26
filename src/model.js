@@ -12,6 +12,9 @@ function BurgerModel() {
         choices: {},
         done: false
     };
+    
+    // Store completed orders
+    this.completedOrders = [];
 }
 
 // Get burger list from server
@@ -19,7 +22,23 @@ BurgerModel.prototype.getBurgers = function() {
     var self = this;
     return fetch(this.apiUrl + '/burgers')
         .then(function(response) {
+            if (!response.ok) {
+                throw new Error('API response not ok');
+            }
             return response.json();
+        })
+        .then(function(data) {
+            // Add images to API data if they don't have them
+            return data.map(function(burger) {
+                if (!burger.image) {
+                    if (burger.id === "classic-beef") {
+                        burger.image = "burger_0__FocusFillWyIwLjAwIiwiMC4wMCIsODAwLDQ3OF0_CompressedW10.jpg";
+                    } else if (burger.id === "grilled-chicken") {
+                        burger.image = "Crispiest-buttermilk-fried-chicken-burgers-90854e5.jpg";
+                    }
+                }
+                return burger;
+            });
         })
         .catch(function(error) {
             console.log('Could not get burgers from server:', error);
@@ -28,12 +47,14 @@ BurgerModel.prototype.getBurgers = function() {
                 {
                     id: "classic-beef",
                     title: "Classic Beef Burger", 
-                    description: "A timeless favorite with juicy beef patty"
+                    description: "A timeless favorite with juicy beef patty",
+                    image: "burger_0__FocusFillWyIwLjAwIiwiMC4wMCIsODAwLDQ3OF0_CompressedW10.jpg"
                 },
                 {
                     id: "grilled-chicken",
                     title: "Grilled Chicken Burger",
-                    description: "Tender grilled chicken with fresh ingredients"
+                    description: "Tender grilled chicken with fresh ingredients",
+                    image: "Crispiest-buttermilk-fried-chicken-burgers-90854e5.jpg"
                 }
             ];
         });
@@ -44,6 +65,9 @@ BurgerModel.prototype.getBurgerSteps = function(burgerId) {
     var self = this;
     return fetch(this.apiUrl + '/steps?burgerId=' + burgerId)
         .then(function(response) {
+            if (!response.ok) {
+                throw new Error('API response not ok');
+            }
             return response.json();
         })
         .catch(function(error) {
@@ -83,13 +107,10 @@ BurgerModel.prototype.getBackupSteps = function(burgerId) {
             },
             {
                 id: "step4",
-                type: "text",
-                instruction: "How many sauce packets? (1-5)",
-                placeholder: "Enter number of sauce packets",
-                feedback: {
-                    condition: "amount > 3",
-                    message: "Too much sauce might overpower the beef flavor! Maybe try fewer packets?"
-                }
+                type: "multiple-choice",
+                instruction: "Choose your sauce",
+                options: ["BBQ Sauce", "House Sauce", "Chipotle Mayo", "Mustard", "Ketchup", "None"],
+                feedback: null
             },
             {
                 id: "step5",
@@ -142,7 +163,7 @@ BurgerModel.prototype.getBackupSteps = function(burgerId) {
             },
             {
                 id: "step4",
-                type: "text", 
+                type: "text",
                 instruction: "How spicy? (1-10 heat level)",
                 placeholder: "Enter heat level (1-10)",
                 feedback: {
@@ -152,21 +173,28 @@ BurgerModel.prototype.getBackupSteps = function(burgerId) {
             },
             {
                 id: "step5",
+                type: "multiple-choice",
+                instruction: "Choose your sauce",
+                options: ["BBQ Sauce", "Honey Mustard", "Chipotle Mayo", "Mayo", "None"],
+                feedback: null
+            },
+            {
+                id: "step6",
                 type: "image-selection",
-                instruction: "Choose your plating style",
+                instruction: "Choose your chicken sandwich style",
                 imageOptions: [
                     { 
-                        url: "https://images.unsplash.com/photo-1606755962773-d324e9a13086?w=300&h=200&fit=crop", 
-                        label: "Gourmet Plate",
+                        url: "sandwich_feature-500x500.jpg", 
+                        label: "Classic Style",
                         isCorrect: true 
                     },
                     { 
-                        url: "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=300&h=200&fit=crop", 
-                        label: "Basket Style",
+                        url: "Buffalo-Chicken-Burger-square-FS-2.jpg", 
+                        label: "Buffalo Style",
                         isCorrect: false 
                     },
                     { 
-                        url: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=300&h=200&fit=crop", 
+                        url: "Buffalo-Chicken-Wrap-22.webp", 
                         label: "Wrap Style",
                         isCorrect: false 
                     }
@@ -256,7 +284,20 @@ BurgerModel.prototype.addChoice = function(choice) {
 
 // Check if order is complete
 BurgerModel.prototype.isOrderComplete = function() {
-    return this.steps && this.order.step >= this.steps.length;
+    if (!this.steps || this.steps.length === 0) {
+        return false;
+    }
+    
+    // Check if all steps have been answered
+    var completedSteps = 0;
+    for (var i = 0; i < this.steps.length; i++) {
+        var stepId = this.steps[i].id;
+        if (this.order.choices[stepId]) {
+            completedSteps++;
+        }
+    }
+    
+    return completedSteps === this.steps.length;
 };
 
 // Get the current order data
@@ -264,7 +305,47 @@ BurgerModel.prototype.getOrder = function() {
     return this.order;
 };
 
-// Start over
+// Save current order and start a new one
+BurgerModel.prototype.saveCurrentOrder = function() {
+    if (this.order.name && this.order.burgerName) {
+        var savedOrder = {
+            id: this.completedOrders.length + 1,
+            name: this.order.name,
+            burger: this.order.burger,
+            burgerName: this.order.burgerName,
+            choices: JSON.parse(JSON.stringify(this.order.choices)), // Deep copy
+            completedAt: new Date().toLocaleTimeString()
+        };
+        this.completedOrders.push(savedOrder);
+    }
+};
+
+// Start a new order (keep name, reset burger choices)
+BurgerModel.prototype.startNewOrder = function() {
+    this.saveCurrentOrder();
+    var savedName = this.order.name;
+    this.order = {
+        name: savedName, // Keep the same customer name
+        burger: '',
+        burgerName: '',
+        step: 0,
+        choices: {},
+        done: false
+    };
+    this.steps = [];
+};
+
+// Get all completed orders
+BurgerModel.prototype.getCompletedOrders = function() {
+    return this.completedOrders;
+};
+
+// Get total order count
+BurgerModel.prototype.getOrderCount = function() {
+    return this.completedOrders.length + (this.order.burgerName ? 1 : 0);
+};
+
+// Start over completely (reset everything)
 BurgerModel.prototype.reset = function() {
     this.order = {
         name: '',
@@ -274,6 +355,7 @@ BurgerModel.prototype.reset = function() {
         choices: {},
         done: false
     };
+    this.completedOrders = [];
 };
 
 // Check if text input is okay

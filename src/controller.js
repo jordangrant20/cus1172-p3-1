@@ -58,6 +58,11 @@ BurgerController.prototype.setupEventListeners = function() {
             event.preventDefault();
             self.goHome();
         }
+
+        if (target.id === 'order-anyway-btn') {
+            event.preventDefault();
+            self.confirmOrderAnyway();
+        }
     });
 
     // Handle form submits
@@ -166,17 +171,28 @@ BurgerController.prototype.showBurgerMenu = function() {
 // Start the customization steps
 BurgerController.prototype.startSteps = function() {
     var self = this;
+    console.log('Starting steps for burger ID:', this.model.getBurgerId());
     
     this.model.getBurgerSteps(this.model.getBurgerId()).then(function(steps) {
+        console.log('Got steps:', steps);
         if (steps && steps.length > 0) {
             self.model.setSteps(steps);
             self.showCurrentStep();
         } else {
+            console.log('No steps found, finishing order');
             self.finishOrder();
         }
     }).catch(function(error) {
         console.error('Error loading burger steps:', error);
-        self.view.showHelp('Sorry, there was an error loading the customization steps. Please try again.');
+        // Use backup steps from model
+        var backupSteps = self.model.getBackupSteps(self.model.getBurgerId());
+        console.log('Using backup steps:', backupSteps);
+        if (backupSteps && backupSteps.length > 0) {
+            self.model.setSteps(backupSteps);
+            self.showCurrentStep();
+        } else {
+            self.view.showHelp('Sorry, there was an error loading the customization steps. Please try again.');
+        }
     });
 };
 
@@ -188,21 +204,6 @@ BurgerController.prototype.showCurrentStep = function() {
 
     var content = this.view.makeStep(step, stepNum, totalSteps);
     this.view.changeContent(content);
-
-    // Maybe show help message
-    this.maybeShowHelpMessage();
-};
-
-// Show help message sometimes
-BurgerController.prototype.maybeShowHelpMessage = function() {
-    var stepNum = this.model.getCurrentStepNumber();
-    
-    // Show help on certain steps
-    if (stepNum === 1) {
-        this.view.showHelp('Choose what sounds best to you!');
-    } else if (stepNum === 3) {
-        this.view.showHelp('Pick your favorite option from the choices below.');
-    }
 };
 
 // Finish the order
@@ -217,19 +218,28 @@ BurgerController.prototype.finishOrder = function() {
 // Update the order display
 BurgerController.prototype.updateOrderDisplay = function() {
     var order = this.model.getOrder();
-    this.view.updateOrderBox(order);
+    var completedOrders = this.model.getCompletedOrders();
+    var orderCount = this.model.getOrderCount();
+    this.view.updateOrderBox(order, completedOrders, orderCount);
 };
 
 // Start a new order
 BurgerController.prototype.startNewOrder = function() {
-    this.model.reset();
-    this.showWelcome();
+    this.model.startNewOrder(); // Use new multi-order method
+    this.showBurgerMenu(); // Go directly to burger selection, keeping the name
 };
 
 // Go back to welcome page
 BurgerController.prototype.goHome = function() {
-    this.model.reset();
+    this.model.reset(); // Complete reset (clears all orders)
     this.showWelcome();
+};
+
+// Confirm order even with skipped steps
+BurgerController.prototype.confirmOrderAnyway = function() {
+    var order = this.model.getOrder();
+    var content = this.view.makeFinal(order.name, true); // Force to show as completed
+    this.view.changeContent(content);
 };
 
 // Show welcome page

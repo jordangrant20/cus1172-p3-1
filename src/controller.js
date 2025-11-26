@@ -153,10 +153,13 @@ BurgerController.prototype.nextStep = function() {
 BurgerController.prototype.showBurgerMenu = function() {
     var self = this;
     
-    this.model.getBurgers(function(burgers) {
+    this.model.getBurgers().then(function(burgers) {
         var content = self.view.makeBurgerMenu(self.model.getName(), burgers);
         self.view.changeContent(content);
         self.updateOrderDisplay();
+    }).catch(function(error) {
+        console.error('Error loading burgers:', error);
+        self.view.showHelp('Sorry, there was an error loading the burger menu. Please try again.');
     });
 };
 
@@ -164,13 +167,16 @@ BurgerController.prototype.showBurgerMenu = function() {
 BurgerController.prototype.startSteps = function() {
     var self = this;
     
-    this.model.getBurgerSteps(this.model.getBurgerId(), function(steps) {
+    this.model.getBurgerSteps(this.model.getBurgerId()).then(function(steps) {
         if (steps && steps.length > 0) {
             self.model.setSteps(steps);
             self.showCurrentStep();
         } else {
             self.finishOrder();
         }
+    }).catch(function(error) {
+        console.error('Error loading burger steps:', error);
+        self.view.showHelp('Sorry, there was an error loading the customization steps. Please try again.');
     });
 };
 

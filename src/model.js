@@ -191,32 +191,77 @@ BurgerModel.prototype.setName = function(name) {
     this.order.name = name;
 };
 
+// Get user name
+BurgerModel.prototype.getName = function() {
+    return this.order.name;
+};
+
 // Save selected burger
 BurgerModel.prototype.setBurger = function(burgerId, burgerName) {
     this.order.burger = burgerId;
     this.order.burgerName = burgerName;
     this.order.step = 0;
     this.order.choices = {};
+    this.steps = [];
 };
 
-// Save user choice for a step
-BurgerModel.prototype.saveChoice = function(stepId, choice) {
-    this.order.choices[stepId] = choice;
+// Get selected burger ID
+BurgerModel.prototype.getBurgerId = function() {
+    return this.order.burger;
+};
+
+// Set the steps for the selected burger
+BurgerModel.prototype.setSteps = function(steps) {
+    this.steps = steps;
+    this.order.step = 0;
+};
+
+// Get current step
+BurgerModel.prototype.getCurrentStep = function() {
+    if (this.steps && this.steps[this.order.step]) {
+        return this.steps[this.order.step];
+    }
+    return null;
+};
+
+// Get current step number
+BurgerModel.prototype.getCurrentStepNumber = function() {
+    return this.order.step;
+};
+
+// Get total number of steps
+BurgerModel.prototype.getTotalSteps = function() {
+    return this.steps ? this.steps.length : 0;
+};
+
+// Check if there are more steps
+BurgerModel.prototype.hasMoreSteps = function() {
+    return this.order.step < this.getTotalSteps() - 1;
+};
+
+// Go to next step
+BurgerModel.prototype.goToNextStep = function() {
+    if (this.hasMoreSteps()) {
+        this.order.step++;
+    }
+};
+
+// Add a choice to the current step
+BurgerModel.prototype.addChoice = function(choice) {
+    var currentStep = this.getCurrentStep();
+    if (currentStep) {
+        this.order.choices[currentStep.id] = choice;
+    }
+};
+
+// Check if order is complete
+BurgerModel.prototype.isOrderComplete = function() {
+    return this.steps && this.order.step >= this.steps.length;
 };
 
 // Get the current order data
 BurgerModel.prototype.getOrder = function() {
     return this.order;
-};
-
-// Go to next step
-BurgerModel.prototype.nextStep = function() {
-    this.order.step++;
-};
-
-// Check if order is finished
-BurgerModel.prototype.isFinished = function(totalSteps) {
-    return this.order.step >= totalSteps;
 };
 
 // Start over
